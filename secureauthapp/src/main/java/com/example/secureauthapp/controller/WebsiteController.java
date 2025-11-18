@@ -1,8 +1,10 @@
 package com.example.secureauthapp.controller;
 
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -23,10 +25,15 @@ public class WebsiteController {
         this.authenticationManager = authenticationManager;
     }
 
-    @GetMapping("/greet")
+    @GetMapping("/home")
     public String greet(Model model) {
         // Get the authenticated user's username
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        // Check if the user is authenticated
+        if (authentication == null || !authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken) {
+            // Redirect to the login page if the user is not authenticated
+            return "redirect:/login";
+        }
         String username = authentication.getName();
         System.out.println("Username from context "+username);
 
@@ -34,7 +41,17 @@ public class WebsiteController {
         model.addAttribute("username", username);
 
         // Return the Thymeleaf template name
-        return "greet";
+        // Get the user's role
+        String role = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .findFirst()
+                .orElse("ROLE_STAFF"); // Default role if no authority is found
+        // Redirect to the appropriate page based on the role
+        if (role.equals("ROLE_ADMIN")) {
+            return "admin"; // Return the admin.html template
+        } else {
+            return "viewer"; // Return the viewer.html template
+        }
     }
 
     @GetMapping("/login")
@@ -51,11 +68,12 @@ public class WebsiteController {
     @PostMapping("/register")
     public String registerUser(
             @RequestParam String username, // Username from the form
-            @RequestParam String password // Password from the form
+            @RequestParam String password, // Password from the form
+            @RequestParam String role // Role from the form
     ) {
         // Register the user by storing their details in the HashMap
         try {
-            userDetailsService.registerUser(username, password);
+            userDetailsService.registerUser(username, password, role);
         } catch (Exception userExistsAlready) {
             // Redirect to the /register endpoint
             return "redirect:/register?error";

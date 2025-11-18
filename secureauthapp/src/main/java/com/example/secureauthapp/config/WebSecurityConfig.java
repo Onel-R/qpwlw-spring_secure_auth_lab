@@ -7,6 +7,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.LogoutConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -25,18 +26,17 @@ public class WebSecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/register", "/login").permitAll() // Allow access to registration and login pages
-                .requestMatchers("/greet").authenticated() // Secure the /greet endpoint
-                .anyRequest().permitAll() // Allow access to all other endpoints
+                    .requestMatchers("/register", "/login").permitAll() // Allow access to registration and login pages
+                    .requestMatchers("/admin").hasRole("ADMIN") // Restrict /admin to users with the ADMIN role
+                    .requestMatchers("/viewer").hasRole("STAFF") // Restrict /viewer to users with the STAFF role
+                    .anyRequest().authenticated() // Allow access to all other endpoints
             )
             .formLogin(form -> form
                 .loginPage("/login") // Custom login page
-                .defaultSuccessUrl("/greet", true) // Redirect to /greet after successful login
+                .defaultSuccessUrl("/home", true) // Redirect to /greet after successful login
                 .permitAll()
             )
-            .logout(logout -> logout
-                .permitAll()
-            );
+            .logout(LogoutConfigurer::permitAll);
         return http.build();
     }
 
